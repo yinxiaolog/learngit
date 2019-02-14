@@ -3,15 +3,176 @@
 	函数的第一规则是短小要短小，第二条规则是还要更短小。
     每行都不应该有150字符那么长，20行封顶最佳。
     if语句，else语句，while语句等，其中的代码行应该只有一行，该行大抵应该是一个函数调用语句。
+    HtmlUtil.java
+    public static String renderPageWithSetupsAndTeardowns(PageData pageData, boolean isSuite) throws Exceptions {
+        if(isTestPage(pageDate)){
+            includeSetupAndTeardownPages(pageDate, isSuite);
+        }
+        return pageDate.getHtml();
+    }
 2 只做一件事
     函数应该做一件事，做好这件事，只做这一件事。
     判断一个函数是否不止做了一件事，还有一个方法，就是看是否能再拆出一个函数。
+    public class GeneratePrimes {
+    /**
+     * @param maxValue is the generation limit.
+     */
+    public static int[] generatePrimes(int maxValue) {
+        if (maxValue >= 2) {// the only valid case
+            // declartions
+            int s = maxValue + 1; // size of array
+            boolean[] f = new boolean[s];
+            int i;
+            // initialize array to true
+            for (i = 0; i < s; i++) {
+                f[i] = true;
+            }
+            // get rid of known non-primes
+            f[0] = f[1] = false;
+            // sieve
+            int j;
+            for (i = 2; i < Math.sqrt(s) + 1; i++) {
+                if (f[i]) { // if i is uncrossed, cross its multiples.
+                    for (j = 2 * i; j < s; j += i) {
+                        f[j] = false; // multiple is not prime
+                    }
+                }
+            }
+
+            // how many primes are there?
+            int count = 0;
+            for (i = 0; i < s; i++) {
+                if (f[i]) {
+                    count++; // bump count.
+                }
+            }
+
+            int[] primes = new int[count];
+
+            // move the primes into the result
+            for (i = 0, j = 0; i < s; i++) {
+                if (f[i]) { // if prime
+                    primes[j++] = i;
+                }
+            }
+
+            return primes; // return the primes
+        } else { // maxValue < 2
+            return new int[0]; // return null array if bad input.
+        }
+    }
+}
+
+public class PrimeGenerator {
+    private static boolean[] crossedOut;
+    private static int[] result;
+
+    public static int[] generatePrimes(int maxValue) {
+        if (maxValue < 2) {
+            return new int[0];
+        } else {
+            uncrossIntegersUpTo(maxValue);
+            crossOutMultiples();
+            putUncrossedIntegersIntResult();
+            return result;
+        }
+    }
+
+    private static void uncrossIntegersUpTo(int maxValue) {
+        crossedOut = new boolean[maxValue + 1];
+        for (int i = 2; i < crossedOut.length; i++) {
+            crossedOut[i] = false;
+        }
+    }
+
+    private static void crossOutMultiples() {
+        int limit = determineIterationLimit();
+        for (int i = 2; i <= limit; i++) {
+            if (notCrossed(i)) {
+                crossOutMultiplesOf(i);
+            }
+        }
+    }
+
+    private static int determineIterationLimit() {
+        double iterationLimit = Math.sqrt(crossedOut.length);
+        return (int) iterationLimit;
+    }
+
+    private static void crossOutMultiplesOf(int i) {
+        for (int multiple = 2 * i; multiple < crossedOut.length; multiple += i) {
+            crossedOut[multiple] = true;
+        }
+    }
+
+    private static boolean notCrossed(int i) {
+        return crossedOut[i] = false;
+    }
+
+    private static void putUncrossedIntegersIntResult() {
+        result = new int[numberOfUncrossedIntegers()];
+        for (int j = 0, i = 2; i < crossedOut.length; i++) {
+            if (notCrossed(i)) {
+                result[j++] = i;
+            }
+        }
+    }
+
+    private static int numberOfUncrossedIntegers() {
+        int count = 0;
+        for (int i = 2; i < crossedOut.length; i++) {
+            if (notCrossed(i)) {
+                count++;
+            }
+        }
+        return count;
+    }
+}
+
 3 每个函数一个抽象层级
     要确保函数只做一件事，函数中的语句都要在同一抽象层级上。
     自顶向下读代码：向下规则
 4 switch语句
     单一权责原则（Single Responsibility Principle，SRP）
     开放闭合原则（Open Closed Principle，OCP）
+    Payroll.java
+    public Money calculatePay(Employee e) throws InvalidEmployeeType {
+        switch (e.type) {
+            case COMMISSIONED:
+                return calculateCommissionedPay(e);
+            case HOURLY:
+                return calculateHourlyPay(e);
+            case SALARIED:
+                return calculateSalariedPay(e);
+            default:
+                throw new InvalidEmployeeType(e.type);
+        }
+    }
+
+    public abstract class Employee {
+        public abstract boolean isPayday();
+        public abstract Money calculatePay();
+        public abstract void deliverPay(Money pay);
+    }
+    --------------------
+    public interface EmployeeFactory {
+        public Employee makeEmployee(EmployeeRecord r) throws InvalidEmployeeType;
+    }
+    --------------------
+    public class EmployeeFactoryImpl implements EmployeeFactory {
+        public Employee makeEmployee(EmployeeRecord r) throws InvalidEmployeeType {
+            switch (r.type) {
+                case COMMISSIONED:
+                    return new CommissionEmployee(r);
+                case HOURLY:
+                    return new HourlyEmployee(r);
+                case SALARIED:
+                    return new SalariedEmployee(r);
+                default:
+                    throw new InvalidEmployeeType(r.type);
+            }
+        }
+    }
 5 使用描述性的名称
     长而具有描述性的名称，要比短而令人费解的名称好。
     选择描述性的名称能理清你关于模块的设计思路，并帮你改进。
@@ -19,17 +180,66 @@
 6 函数参数
     除非有足够理由，否则不要使用三个以上的参数。
     从测试的角度看，参数甚至更叫人为难。
+    Circle makeCircle(double x, double y, double radius);
+    Circle makeCircle(Point center, double radius);
 7 无副作用
     函数承诺只做一件事，但还是会做其他被隐藏起来的事情，具有破坏性，会导致古怪的时序性耦合及顺序依赖。
     普遍而言，应避免使用输出参数。
+    UserValidator.java
+    public class UserValidator {
+        private Cryptographer cryptographer;
+
+        public boolean checkPassword(String userName, String password) {
+            User user = UserGateWay.findByName(userName);
+            if (user != User.NULL) {
+                String codedPhrase = user.getPhraseEncodedByPassword();
+                String phrase = cryptographer.decrypt(codedPhrase, password);
+                if ("Valid Password".equals(phrase)) {
+                    Session.initialize();
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
 8 分隔指令与查询
     函数应该修改某对象的状态，或是返回该对象的有关信息。
+    public boolean set(String attribute, String value);
+
+    if (set("username", "unclebob"))...
+
+    if(attributeExists("username")) {
+        setAttribute("username", "unclebob");
+    }
+
 9 使用异常替代返回错误码
     从指令式函数返回错误码轻微违反了指令与查询分隔的规则。
     如果使用异常替代返回错误码，错误处理代码就能从主路径代码中分离出来，得到简化。
     抽离Try/Catch代码块
+    if (deletePage(page) == E_OK) {
+        if (registry.deleteReference(page.name) == E_OK) {
+            if (configKeys.deleteKey(page.name.makeKey()) == E_OK) {
+                logger.log("page deleted");
+            } else {
+                logger.log("configKeys not deleted");
+            }
+        } else {
+            logger.log("deleteReference from registry failed");
+        }
+    } else {
+        logger.log("delete failed");
+        return E_ERROR;
+    }
     错误处理就是一件事
     Error.java依赖磁铁
+    public enum Error {
+        OK,
+        INVALID,
+        NO_SUCH,
+        LOCKED,
+        OUT_OF_RESOUTCES,
+        WAITING_FOR_EVENT;
+    }
 10 别重复自己
     重复可能事软件中一切邪恶的根源。
 11 结构化编程
