@@ -52,6 +52,7 @@ public class BufferTrigger<W extends Window> extends Trigger<Object, W> {
 
         fireCount.add(1L);
         System.out.println("count: " + fireCount.get());
+        System.out.println(String.format("onElement timestamp: [%s|%s]", timestamp, sdf.format(timestamp)));
         //timestamp = ctx.getCurrentProcessingTime();
 
         if (fireCount.get() >= maxCount) {
@@ -89,10 +90,11 @@ public class BufferTrigger<W extends Window> extends Trigger<Object, W> {
 
     @Override
     public TriggerResult onEventTime(long time, W window, TriggerContext ctx) throws Exception {
+        System.out.println(String.format("time onEventTime: [%s|%s]", time, sdf.format(time)));
         ReducingState<Long> fireCount = ctx.getPartitionedState(countStateDesc);
         if (time >= window.maxTimestamp() && fireCount.get() != null && fireCount.get() > 0L) {
             System.out.println(String.format("window.maxTimestamp: [%s|%s]", window.maxTimestamp(), sdf.format(window.maxTimestamp())));
-            System.out.println(String.format("time: [%s|%s]", time, sdf.format(time)));
+            //System.out.println(String.format("time: [%s|%s]", time, sdf.format(time)));
             System.out.println("triggered by eventTime");
             return TriggerResult.FIRE_AND_PURGE;
         }
@@ -110,6 +112,7 @@ public class BufferTrigger<W extends Window> extends Trigger<Object, W> {
 //            return TriggerResult.FIRE_AND_PURGE;
 //        }
 //        return TriggerResult.CONTINUE;
+        System.out.println(String.format("time onProcessingTime: [%s|%s]", time, sdf.format(time)));
         ReducingState<Long> fireCount = ctx.getPartitionedState(countStateDesc);
         ReducingState<Long> fireTimestamp = ctx.getPartitionedState(timeoutStateDesc);
         if (time == window.maxTimestamp()) {
@@ -122,7 +125,7 @@ public class BufferTrigger<W extends Window> extends Trigger<Object, W> {
             System.out.println("timeTrigger triggered: [" + time + "|" + sdf.format(time) + "]");
             fireCount.clear();
             fireTimestamp.clear();
-            return TriggerResult.FIRE;
+            return TriggerResult.FIRE_AND_PURGE;
         }
 
         return TriggerResult.CONTINUE;
@@ -131,8 +134,11 @@ public class BufferTrigger<W extends Window> extends Trigger<Object, W> {
     @Override
     public void clear(W window, TriggerContext ctx) throws Exception {
         ReducingState<Long> fireTimestamp = ctx.getPartitionedState(timeoutStateDesc);
-        long timestamp = fireTimestamp.get();
-        ctx.deleteProcessingTimeTimer(timestamp);
+        if (fireTimestamp.get() != null) {
+            long timestamp = fireTimestamp.get();
+            ctx.deleteProcessingTimeTimer(timestamp);
+        }
+
         fireTimestamp.clear();
     }
 
